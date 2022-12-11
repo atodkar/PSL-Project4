@@ -1,0 +1,284 @@
+---
+title: "Project 4: Movie Recommendation"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE, warning = FALSE, message = FALSE)
+```
+
+## Team:
+
+Schillaci McInnis - Netid: mcinnis3 UIN: 661653305
+
+Anand Todkar - Netid: atodkar2 UIN: 677333366
+
+Furqaan Ali - Netid: fali30 UIN: 669471668
+
+### Contribution:
+
+All team members collaborated and contributed equally.
+
+### System I: Recommendations
+#### Setup:
+```{r}
+library(dplyr)
+library(tidyr)
+
+myurl = "https://liangfgithub.github.io/MovieData/"
+
+# use colClasses = 'NULL' to skip columns
+ratings = read.csv(paste0(myurl, 'ratings.dat?raw=true'), 
+                   sep = ':',
+                   colClasses = c('integer', 'NULL'), 
+                   header = FALSE)
+colnames(ratings) = c('UserID', 'MovieID', 'Rating', 'Timestamp')
+
+
+movies = readLines(paste0(myurl, 'movies.dat?raw=true'))
+movies = strsplit(movies, split = "::", fixed = TRUE, useBytes = TRUE)
+movies = matrix(unlist(movies), ncol = 3, byrow = TRUE)
+movies = data.frame(movies, stringsAsFactors = FALSE)
+colnames(movies) = c('MovieID', 'Title', 'Genres')
+movies$MovieID = as.integer(movies$MovieID)
+
+# convert accented characters
+movies$Title[73]
+movies$Title = iconv(movies$Title, "latin1", "UTF-8")
+movies$Title[73]
+
+# extract year
+movies$Year = as.numeric(unlist(
+  lapply(movies$Title, function(x) substr(x, nchar(x)-4, nchar(x)-1))))
+```
+
+
+#### System I: Recommedation based on genres
+
+##### Recommendation schema 1: Most Popular
+
+Here, we define popular as simply those movies that have the most ratings. The reasoning is that "popular" here just refers to the movies that have been watched by the most people or are most "known" and a good indicator of this is the number of times the movie has been rated, regardless of whether those ratings are good or not.
+
+As seen below, we calculate the most popular movies by genre by joining the movies and ratings, filtering out any movies that do not fall within the selected genre, arranging the resulting moves by the number of ratings each has in descending order, and then finally selecting the top N.
+
+```{r}
+
+get_top_n_popular_movies_by_genre = function(genre, n = 5) {
+
+  tmp = ratings %>% 
+    group_by(MovieID) %>% 
+    summarize(ratings_per_movie = n(), ave_ratings = mean(Rating)) %>%
+    inner_join(movies, by = 'MovieID') %>%
+    separate_rows(Genres, sep = "[|]") %>%
+    filter(Genres == genre)
+  
+  popular =
+    tmp %>% 
+    arrange(desc(ratings_per_movie)) %>%
+    select(c("Title", "ratings_per_movie")) %>%
+    top_n(n)
+  
+  popular
+}
+
+```
+
+```{r}
+
+get_top_n_popular_movies_by_genre("Comedy")
+```
+
+##### Recommendation schema 2: Most Highly-Rated
+
+Here, we define highly-rated as those movies that have the highest average rating. However, this can be heavily faulted by movies with very few (as few as 1) but high-rating values (5). To account for this, we select the highest average rated movies from the selection of movies that also exceeds a certain threshold of "popularity". We define this popularity level as movies with at least 1,000 ratings.
+
+As seen below, we calculate the highly-rated movies by genre by joining the movies and ratings, filtering out any movies that do not fall within the selected genre or have fewer than 1,000 ratings, arranging the resulting moves by the average rating each has in descending order, and then finally selecting the top N.
+
+```{r}
+
+get_top_n_highly_rated_movies_by_genre = function(genre, n = 5) {
+
+  tmp = ratings %>% 
+    group_by(MovieID) %>% 
+    summarize(ratings_per_movie = n(), ave_ratings = round(mean(Rating), dig=3)) %>%
+    inner_join(movies, by = 'MovieID') %>%
+    separate_rows(Genres, sep = "[|]") %>%
+    filter(Genres == genre)
+  
+  highly_rated =
+    tmp %>% 
+    filter(ratings_per_movie > 1000) %>%
+    arrange(desc(ave_ratings)) %>%
+    select(c("Title", "ave_ratings")) %>%
+    top_n(n, ave_ratings)
+  
+  highly_rated
+}
+
+```
+
+```{r}
+get_top_n_highly_rated_movies_by_genre("Action")
+```
+
+
+### System II: Collaborative recommendation system
+
+#### Load movie data:
+```{r}
+library(recommenderlab)
+
+myurl = "https://liangfgithub.github.io/MovieData/"
+ratings = read.csv(paste0(myurl, 'ratings.dat?raw=true'), 
+                   sep = ':',
+                   colClasses = c('integer', 'NULL'), 
+                   header = FALSE)
+
+colnames(ratings) = c('UserID', 'MovieID', 'Rating', 'Timestamp')
+i = paste0('u', ratings$UserID)
+j = paste0('m', ratings$MovieID)
+x = ratings$Rating
+tmp = data.frame(i, j, x, stringsAsFactors = T)
+Rmat = sparseMatrix(as.integer(tmp$i), as.integer(tmp$j), x = tmp$x)
+rownames(Rmat) = levels(tmp$i)
+colnames(Rmat) = levels(tmp$j)
+Rmat = new('realRatingMatrix', data = Rmat)
+
+train = Rmat[1:500, ]
+test = Rmat[501, ]
+```
+
+#### UBCF:
+```{r}
+##Normalization
+data = as(train, "matrix")
+user.means = rowMeans(data, na.rm = TRUE)
+data = data - user.means
+
+newdata = as(Rmat[501, ], "matrix")
+newuser.mean = mean(newdata, na.rm = TRUE)
+newdata = newdata - newuser.mean
+```
+```{r}
+## Similarity
+sim = rep(0, dim(data)[1])
+for(i in 1:length(sim)){
+  tmp.y = as.vector(newdata)
+  ind.y = which(!is.na(tmp.y))
+  tmp.x = data[i, ]
+  ind.x = which(!is.na(tmp.x))
+  ind = intersect(ind.x, ind.y)
+  if(length(ind) > 0){
+    tmp.x = tmp.x[ind]
+    tmp.y = tmp.y[ind]
+    sim[i] = sum(tmp.x * tmp.y) / sqrt(sum(tmp.x^2) * sum(tmp.y^2))
+  }
+}
+sim = (1 + sim)/2
+```
+```{r}
+## Top k similarity
+k = 20
+len = length(sim)
+topKIdxs = rev(order(sim)[(len-(k - 1)):len]) 
+topSim = sim[topKIdxs]
+topData = data[topKIdxs, ]
+## Weighted average
+Sr = matrix(, nrow = length(topSim), ncol = dim(topData)[2])
+for(i in 1:length(topSim)){
+  Sr[i,] = as.vector(topData[i,]) * topSim[i]
+} 
+```
+```{r}
+pred = colSums(Sr, na.rm=TRUE) / colSums((!is.na(topData)) * topSim, na.rm=TRUE)
+# Add back mean
+mypred = pred + newuser.mean
+# Infinite to NA
+mypred[is.infinite(mypred)] = NaN
+# Evaluate
+mypred[which(!is.na(as(Rmat[501, ], "matrix")))] = NaN 
+```
+##### Evaluate UBCF:
+```{r}
+recommender.UBCF <- Recommender(train, method = "UBCF",
+                                parameter = list(normalize = 'center', 
+                                                 method = 'Cosine', 
+                                                 nn = 20))
+
+p.UBCF <- predict(recommender.UBCF, test, type="ratings")
+p.UBCF <- as.numeric(as(p.UBCF, "matrix"))
+
+sum(is.na(p.UBCF) != is.na(mypred)) ### should be zero
+max(abs(p.UBCF - mypred), na.rm = TRUE)
+max(abs(p.UBCF - mypred), na.rm = TRUE) < 0.000001 ### should be less than 1e-06 
+```
+
+#### IBCF:
+
+```{r}
+
+#Similarity 
+data = as(train, "matrix")
+user.means = rowMeans(data, na.rm = TRUE)
+data = data - user.means
+
+newdata = as(test, "matrix")
+ 
+sim = proxy::simil(data, method = "cosine", by_rows = F)
+sim = (1 + sim)/2
+sim = as.matrix(sim)
+
+for(i in 1:ncol(data)){
+  indx = tail(order(sim[i,], decreasing = FALSE, na.last = FALSE), 30)
+  sim[i,-indx] = NA
+} 
+```
+
+```{r}
+## Calculate ratings
+ra = as.vector(newdata)
+ 
+rMat = matrix(rep(ra,each = length(ra)),nrow = length(ra))
+data12 = sim *  rMat
+
+naVec = which(is.na(newdata))
+mypred = rep(NA, times = ncol(newdata))
+
+for(i in 1:length(naVec)){
+  num = sum(data12[naVec[i],] , na.rm = T) 
+  den = sum(!is.na(data12[naVec[i], ]))
+  mypred[naVec[i]] = num/den
+}
+
+mypred[is.infinite(mypred)] = NA
+mypred[is.nan(mypred)] = NA
+```
+ 
+##### Evaluate IBCF:
+
+```{r}
+ 
+recommender.IBCF <- Recommender(train, method = "IBCF",
+                                parameter = list(normalize = 'center', 
+                                                 method = 'Cosine', 
+                                                 k = 30))
+
+p.IBCF <- predict(recommender.IBCF, test, type="ratings")
+p.IBCF <- as.numeric(as(p.IBCF, "matrix"))
+
+## first output: should be less than 10
+sum(is.na(p.IBCF) != is.na(mypred)) 
+
+## second output: should be less than 10%
+mydiff = abs(p.IBCF - mypred)
+sum(mydiff[!is.na(mydiff)] > 1e-6) / sum(!is.na(mydiff))
+```
+
+#### Question: why do we encounter such a big discrepancy for IBCF, but not for UBCF? 
+
+In the IBCF there is a large mismatch because there is some issue with the similarity measurement. Similarity are computed on set that is not NA. Also, for the item similarity matrix a lot of the values are the same, for example, if you check the similarity for a particular movie you will find that the top 10 movies all have same similarity values of 1.   
+
+
+
+
+
