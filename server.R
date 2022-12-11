@@ -1,8 +1,8 @@
 ## server.R
 
-# load functions
-source('functions/cf_algorithm.R') # collaborative filtering
-source('functions/similarity_measures.R') # similarity measures
+
+#source('functions/cf_algorithm.R')
+#source('functions/similarity_measures.R') # similarity measures
 source('scripts/preprocess.R')
 source('scripts/recommender.R')
 
@@ -23,7 +23,7 @@ get_user_ratings <- function(value_list) {
 
 shinyServer(function(input, output, session) {
   
-  # show the books to be rated
+  # show the movies to be rated based on genre list
   output$selectGenre <- renderUI({
     selectInput(
       "selectGenre",
@@ -33,14 +33,16 @@ shinyServer(function(input, output, session) {
     )
   })
   
+  # radio button to show the sorting options
   output$selectSortBy <- renderUI({
     radioButtons(
       "selectSortBy",
       "Sort By",
-      c("Popularity", "Average Rating")
+      c("Average Rating", "Popularity")
     )
   })
   
+  #radio button to choose the recommendation engine
   output$selectRecommendation <- renderUI({
     radioButtons(
       "selectRecommendation",
@@ -50,14 +52,14 @@ shinyServer(function(input, output, session) {
   })
   
   handleButtonResetRecommendation <- eventReactive(input$btnSubmitRating, {
-    removeUI("#recomm")
+    removeUI("#recommendations")
     
     moviesToRate = getRecommendedGenreMovies("", "Popularity")
     getMovieRatingTiles(moviesToRate)
   })
   
   observeEvent(input$btnResetRecommendation, {
-    removeUI("#recomm")
+    removeUI("#recommendations")
     
     # Get personalized recommendations
     value_list <- reactiveValuesToList(input)
@@ -69,7 +71,7 @@ shinyServer(function(input, output, session) {
       "#placeholder",
       "afterEnd",
       ui = div(
-        id = 'recomm',
+        id = 'recommendations',
         box(
           width = 12,
           title = "We found these movies that you might like",
@@ -79,7 +81,6 @@ shinyServer(function(input, output, session) {
     )
   })
 
-  # Calculate recommendations when the sbumbutton is clicked
   handleEventGenreFilterChange <- eventReactive(
     {
       input$selectGenre
@@ -91,12 +92,12 @@ shinyServer(function(input, output, session) {
   )
 
   # display the recommendations
-  output$recommendationResults1 <- renderUI({
+  output$recommendationResultsSystem1 <- renderUI({
     getMovieTiles(handleEventGenreFilterChange())
   })
   
   # show the movies to be rated
-  output$recommendationResults2 <- renderUI({
+  output$recommendationResultsSystem2 <- renderUI({
     box(
       width = 12,
       title = "Rate these movies to get movie recommendations based on your preference",

@@ -11,9 +11,6 @@ withConsoleRedirect = function(containerId, expr) {
 }
 
 
-#############################################################################
-#################### UI Helpers #############################################
-#############################################################################
 num_rows <- 6
 num_movies <- 3
 
@@ -21,29 +18,9 @@ getCurrentIndex = function(i, j) {
   (i - 1) * num_movies + j
 }
 
-getMovieTiles = function(recom_result) {
-  lapply(1:num_rows, function(i) {
-    list(
-      fluidRow(
-        br(),
-        lapply(1:num_movies, function(j) {
-          idx = getCurrentIndex(i, j)
-          apputils::infoBox(
-            recom_result$Genres[idx],
-            value = recom_result$Title[idx],
-            subtitle = paste(round(recom_result$ave_ratings[idx], digits = 1), "/ 5.0 out of ", recom_result$ratings_per_movie[idx]," reviews"),
-            icon = apputils::icon(list(src = recom_result$image_url[idx]), class = "my-icon-123", lib = "local"),
-            fill = TRUE,
-            color = "white",
-            width = 4
-          )
-        }),
-        br()
-      )
-    ) # columns
-  }) # rows
-}
-
+###
+### This is rating tile for a movie system-1
+### 
 getMovieRatingTiles = function(recom_result) {
   lapply(1:num_rows, function(i) {
     list(
@@ -66,9 +43,37 @@ getMovieRatingTiles = function(recom_result) {
         }),
         br()
       )
-    ) # columns
-  }) # rows
+    )
+  })
 }
+
+
+###
+### For tiles on recommmendation system-2
+###
+getMovieTiles = function(recom_result) {
+  lapply(1:num_rows, function(i) {
+    list(
+      fluidRow(
+        br(),
+        lapply(1:num_movies, function(j) {
+          idx = getCurrentIndex(i, j)
+          apputils::infoBox(
+            recom_result$Genres[idx],
+            value = recom_result$Title[idx],
+            subtitle = paste(round(recom_result$average_ratings[idx], digits = 1), "/ 5.0 out of ", recom_result$ratings_per_movie[idx]," reviews"),
+            icon = apputils::icon(list(src = recom_result$image_url[idx]), class = "my-icon-123", lib = "local"),
+            fill = TRUE,
+            color = "white",
+            width = 4
+          )
+        }),
+        br()
+      )
+    )
+  })
+}
+
 
 
 # Set up a button to have an animated loading indicator and a checkmark

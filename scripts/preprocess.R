@@ -6,7 +6,10 @@ library(data.table)
 library(reshape2)
 
 # Load ratings data
-ratings = read.csv("./data/ratings.dat", 
+myurl = "https://liangfgithub.github.io/MovieData/"
+
+# use colClasses = 'NULL' to skip columns
+ratings = read.csv(paste0(myurl, 'ratings.dat?raw=true'), 
                    sep = ':',
                    colClasses = c('integer', 'NULL'), 
                    header = FALSE)
@@ -49,14 +52,14 @@ genre_list = c("Action", "Adventure", "Animation",
 # Ratings per Movie
 ratingsPerMovie = ratings %>%
   group_by(MovieID) %>% 
-  summarize(ratings_per_movie = n(), ave_ratings = mean(Rating)) %>%
+  summarize(ratings_per_movie = n(), average_ratings = mean(Rating)) %>%
   inner_join(movies, by = 'MovieID')
 
 
-movieSortedByAvgRatings = arrange(ratingsPerMovie, desc(ratingsPerMovie$ave_ratings))
+# Pre calculated average and num ratings
+movieSortedByAvgRatings = arrange(ratingsPerMovie, desc(ratingsPerMovie$average_ratings))
 movieSortedByNumRatings = arrange(ratingsPerMovie, desc(ratingsPerMovie$ratings_per_movie))
 
-# Function to get recommended movie based on genre
 
 getRecommendedGenreMovies = function(genre = "", sortBy = "Average Rating") {
   sortedMovies = movieSortedByAvgRatings
