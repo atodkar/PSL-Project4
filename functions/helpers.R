@@ -19,7 +19,7 @@ getCurrentIndex = function(i, j) {
 }
 
 ###
-### This is rating tile for a movie system-1
+### This is rating tile for a movie system1
 ### 
 getMovieRatingTiles = function(recom_result) {
   lapply(1:num_rows, function(i) {
@@ -61,7 +61,7 @@ getMovieTiles = function(recom_result) {
           apputils::infoBox(
             recom_result$Genres[idx],
             value = recom_result$Title[idx],
-            subtitle = paste(round(recom_result$average_ratings[idx], digits = 1), "/ 5.0 out of ", recom_result$ratings_per_movie[idx]," reviews"),
+            subtitle = paste(round(recom_result$ave_ratings[idx], digits = 1), "/ 5.0 out of ", recom_result$ratings_per_movie[idx]," reviews"),
             icon = apputils::icon(list(src = recom_result$image_url[idx]), class = "my-icon-123", lib = "local"),
             fill = TRUE,
             color = "white",
@@ -70,8 +70,8 @@ getMovieTiles = function(recom_result) {
         }),
         br()
       )
-    )
-  })
+    ) # columns
+  }) # rows
 }
 
 

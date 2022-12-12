@@ -1,11 +1,13 @@
-## server.R
 
-
-#source('functions/cf_algorithm.R')
-#source('functions/similarity_measures.R') # similarity measures
 source('scripts/preprocess.R')
 source('scripts/recommender.R')
 
+#rsconnect::configureApp("PSL-Project4", size="xlarge")
+
+
+
+##
+## Read ratings selected by user
 get_user_ratings <- function(value_list) {
   dat <- data.table(movie_id = sapply(strsplit(names(value_list), "_"), function(x) ifelse(length(x) > 1, x[[2]], NA)),
                     rating = unlist(as.character(value_list)))
@@ -14,7 +16,7 @@ get_user_ratings <- function(value_list) {
   dat[, ':=' (movie_id = paste("m", movie_id, sep = ""), rating = as.numeric(rating))]
   dat <- dat[rating > 0]
   
-  idx = which(dat$movie_id %in% movieIDs)
+  idx = match(dat$movie_id, movieIDs)
   new.ratings = rep(NA, n.item)
   new.ratings[idx] = dat$rating
   
@@ -33,28 +35,11 @@ shinyServer(function(input, output, session) {
     )
   })
   
-  # radio button to show the sorting options
-  output$selectSortBy <- renderUI({
-    radioButtons(
-      "selectSortBy",
-      "Sort By",
-      c("Average Rating", "Popularity")
-    )
-  })
-  
-  #radio button to choose the recommendation engine
-  output$selectRecommendation <- renderUI({
-    radioButtons(
-      "selectRecommendation",
-      "Recommendation Method",
-      c("UBCF", "IBCF")
-    )
-  })
   
   handleButtonResetRecommendation <- eventReactive(input$btnSubmitRating, {
     removeUI("#recommendations")
     
-    moviesToRate = getRecommendedGenreMovies("", "Popularity")
+    moviesToRate = getRecommendedGenreMovies("")
     getMovieRatingTiles(moviesToRate)
   })
   
@@ -64,8 +49,8 @@ shinyServer(function(input, output, session) {
     # Get personalized recommendations
     value_list <- reactiveValuesToList(input)
     user_ratings <- get_user_ratings(value_list)
-    cat(str(input$selectRecommendation))
-    movies = getRecommendedMovies(user_ratings, input$selectRecommendation)
+
+    movies = getRecommendedMovies(user_ratings)
 
     insertUI(
       "#placeholder",
@@ -84,10 +69,9 @@ shinyServer(function(input, output, session) {
   handleEventGenreFilterChange <- eventReactive(
     {
       input$selectGenre
-      input$selectSortBy
     },
     {
-      getRecommendedGenreMovies(input$selectGenre, input$selectSortBy)
+      getRecommendedGenreMovies(input$selectGenre)
     }
   )
 
@@ -104,4 +88,4 @@ shinyServer(function(input, output, session) {
       handleButtonResetRecommendation()
     )
   })
-}) # server function
+})

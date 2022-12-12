@@ -8,17 +8,16 @@ library(reshape2)
 # Load ratings data
 myurl = "https://liangfgithub.github.io/MovieData/"
 
-# use colClasses = 'NULL' to skip columns
-ratings = read.csv(paste0(myurl, 'ratings.dat?raw=true'), 
+# Need to use offline data for shinyapp
+ratings = read.csv(paste0(myurl, 'ratings.dat?raw=true'),
                    sep = ':',
                    colClasses = c('integer', 'NULL'), 
                    header = FALSE)
 colnames(ratings) = c('UserID', 'MovieID', 'Rating', 'Timestamp')
 ratings$Timestamp = NULL
 
-
-# Clean movies data
-movies = readLines("./data/movies.dat")
+# Clean movies data from local
+movies = readLines(paste0(myurl, 'movies.dat?raw=true')) 
 movies = strsplit(movies, split = "::", fixed = TRUE, useBytes = TRUE)
 movies = matrix(unlist(movies), ncol = 3, byrow = TRUE)
 movies = data.frame(movies, stringsAsFactors = FALSE)
@@ -52,26 +51,23 @@ genre_list = c("Action", "Adventure", "Animation",
 # Ratings per Movie
 ratingsPerMovie = ratings %>%
   group_by(MovieID) %>% 
-  summarize(ratings_per_movie = n(), average_ratings = mean(Rating)) %>%
+  summarize(ratings_per_movie = n(), ave_ratings = mean(Rating)) %>%
   inner_join(movies, by = 'MovieID')
 
 
-# Pre calculated average and num ratings
-movieSortedByAvgRatings = arrange(ratingsPerMovie, desc(ratingsPerMovie$average_ratings))
 movieSortedByNumRatings = arrange(ratingsPerMovie, desc(ratingsPerMovie$ratings_per_movie))
 
 
-getRecommendedGenreMovies = function(genre = "", sortBy = "Average Rating") {
-  sortedMovies = movieSortedByAvgRatings
-  
-  if (sortBy == "Popularity") {
-    sortedMovies = movieSortedByNumRatings
-  }
-  
+getRecommendedGenreMovies = function(genre = "") {
+  ## Grabage collect some memory
+  ## gc(verbose = FALSE)
+
+  sortedMovies = movieSortedByNumRatings
+
   idx = 1:20
   if (genre != "") {
     idx = which(grepl(genre, sortedMovies$Genres))[1:20]
   }
-  sortedMovies[idx, ]
+  sortedMovies[idx, ]  
 }
 
