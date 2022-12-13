@@ -7,6 +7,8 @@ library(shinyjs)
 
 source('functions/helpers.R')
 
+###
+### Tab for System1 algorithm
 tab1 = tabItem(
   "system1",
   fillPage(
@@ -27,6 +29,9 @@ tab1 = tabItem(
   )
 )
 
+
+###
+### Tab for System2 algorithm
 tab2 = tabItem(
   "system2",
   fillPage(
@@ -38,7 +43,6 @@ tab2 = tabItem(
       status = "info",
       class = "rateditems",
       box(
-        #uiOutput('selectRecommendation'),
         fluidRow(
           width = 12,
           actionButton("btnSubmitRating", "Get Movies To Rate", class = "btn-primary"),
@@ -51,6 +55,8 @@ tab2 = tabItem(
   )
 )
 
+###
+### Side menu for both systems
 sidebar = dashboardSidebar(
   sidebarMenu(
     id = "tabs",

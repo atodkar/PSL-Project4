@@ -1,10 +1,17 @@
+library(dplyr)
+library(ggplot2)
+library(recommenderlab)
+library(DT)
+library(data.table)
+library(reshape2)
+library(Matrix)
 
 source('scripts/preprocess.R')
-source('scripts/recommender.R')
+source('scripts/system1.R')
+source('scripts/system2.R')
 
+# Tried with xlarge upgrade but its not free
 #rsconnect::configureApp("PSL-Project4", size="xlarge")
-
-
 
 ##
 ## Read ratings selected by user
@@ -15,6 +22,10 @@ get_user_ratings <- function(value_list) {
   dat[rating == " ", rating := 0]
   dat[, ':=' (movie_id = paste("m", movie_id, sep = ""), rating = as.numeric(rating))]
   dat <- dat[rating > 0]
+  
+  if(length(dat$rating) < 5){
+    return()
+  }
   
   idx = match(dat$movie_id, movieIDs)
   new.ratings = rep(NA, n.item)
@@ -49,6 +60,23 @@ shinyServer(function(input, output, session) {
     # Get personalized recommendations
     value_list <- reactiveValuesToList(input)
     user_ratings <- get_user_ratings(value_list)
+    
+    if(is.null(user_ratings)){
+      
+      insertUI(
+        "#placeholder",
+        "afterEnd",
+        ui = div(
+          id = 'recommendations',
+          modalDialog (
+            "Not enough ratings selected, please provide at least 5 ratings.",
+            title = "Not enough ratings",
+            easyClose = TRUE
+          )
+        )
+      )      
+      return()
+    }
 
     movies = getRecommendedMovies(user_ratings)
 

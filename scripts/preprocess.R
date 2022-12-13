@@ -1,9 +1,4 @@
-library(dplyr)
-library(ggplot2)
-library(recommenderlab)
-library(DT)
-library(data.table)
-library(reshape2)
+
 
 # Load ratings data
 myurl = "https://liangfgithub.github.io/MovieData/"
@@ -57,17 +52,4 @@ ratingsPerMovie = ratings %>%
 
 movieSortedByNumRatings = arrange(ratingsPerMovie, desc(ratingsPerMovie$ratings_per_movie))
 
-
-getRecommendedGenreMovies = function(genre = "") {
-  ## Grabage collect some memory
-  ## gc(verbose = FALSE)
-
-  sortedMovies = movieSortedByNumRatings
-
-  idx = 1:20
-  if (genre != "") {
-    idx = which(grepl(genre, sortedMovies$Genres))[1:20]
-  }
-  sortedMovies[idx, ]  
-}
 
